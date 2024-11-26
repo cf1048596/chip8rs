@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use std::{fmt::write, usize};
+
 const SCREEN_WIDTH: usize = 64;
 const SCREEN_HEIGHT: usize = 32;
 const MEMORY_SIZE: usize = 4096;
@@ -54,6 +56,10 @@ impl Cpu {
         }
     }
 
+    fn push(&mut self, val: u8) {
+        self.stack.push(val);
+    }
+
     pub fn fetch(&mut self) {
         //chip8 is big endian for reference so the first byte is the leading part of the insn
         let high_byte = self.memory[usize::from(self.pc)] as u16;
@@ -70,20 +76,91 @@ impl Cpu {
 
         match (nibble1, nibble2, nibble3, nibble4) {
             (0, 0, 0xE, 0) => self.framebuffer = [[false; SCREEN_WIDTH]; SCREEN_HEIGHT],
-            (0, 0, 0xE, 0xE) => todo!(),
+            (0, 0, 0xE, 0xE) => {
+                self.pc = self.stack[usize::from(self.sp)].into();
+                self.stack.pop();
+            },
             (1, _, _, _) => self.pc = ((nibble2 as u16) << 8) | ((nibble3 as u16) << 4) | (nibble4 as u16),
+            (2, _, _, _) => {
+                self.sp+=1;
+                let address = ((nibble2 as u16) << 8) | ((nibble3 as u16) << 4) | (nibble4 as u16);
+                    self.stack.push(self.sp.try_into().unwrap());
+                self.pc = address;
+            },
+            (3, _, _, _) => {
+                if self.registers[nibble2 as usize] == (((nibble3 as u16) << 4) | (nibble4 as u16)) as u8 {
+                    self.pc+=2;
+                }
+            },
+            (4, _, _, _) => {
+                if self.registers[nibble2 as usize] != (((nibble3 as u16) << 4) | (nibble4 as u16)) as u8 {
+                    self.pc+=2;
+                }
+            },
+            (5, _, _, 0) => {
+                if self.registers[nibble2 as usize] == self.registers[nibble3 as usize] {
+                    self.pc+=2;
+                }
+            },
             (6, 0..=15, _, _) => self.registers[nibble2 as usize] = (nibble3 << 4) | nibble4,
             (7, 0..=15, _, _) => {
                 let nn = (nibble3 << 4) | nibble4;
                 self.registers[nibble2 as usize] = self.registers[nibble2 as usize].wrapping_add(nn);
+            },
+            (8, _, _, 0) => {
+                let vx = self.registers[nibble2 as usize];
+                self.registers[nibble3 as usize] = vx;
+            },
+            (8, _, _, 1) => {
+                self.registers[nibble2 as usize] |= self.registers[nibble3 as usize];
+            },
+            (8, _, _, 2) => {
+                self.registers[nibble2 as usize] &= self.registers[nibble3 as usize];
+            },
+            (8, _, _, 3) => {
+                self.registers[nibble2 as usize] ^= self.registers[nibble3 as usize];
+            },
+            (8, _, _, 4) => {
+                let sum = self.registers[nibble2 as usize] as u16 + self.registers[nibble3 as usize] as u16;
+                self.registers[0xF] = if sum > 0xFF { 1 } else { 0 }; // set vf (carry flag)
+                self.registers[nibble2 as usize] = (sum & 0xFF) as u8; // store lower 8 bits in vx
+            },
+            (8, _, _, 5) => {
+                match (self.registers[nibble2 as usize], self.registers[nibble3 as usize]) {
+                    (vx, vy) if vx > vy => self.registers[0xF] = 1,
+                    (vx, vy) if vy > vx => self.registers[0xF] = 0,
+                    _ => print!("vx & vy are equal"),
+                }
+                self.registers[nibble2 as usize] -= self.registers[nibble3 as usize];
+            },
+            (8, _, _, 6) => {
+                let sum = self.registers[nibble2 as usize] as u16 + self.registers[nibble3 as usize] as u16;
+                self.registers[0xF] = if sum > 0xFF { 1 } else { 0 }; // set vf (carry flag)
+                self.registers[nibble2 as usize] = (sum & 0xFF) as u8; // store lower 8 bits in vx
             }
+            (8, _, _, 7) => {
+                self.registers[0xF] = self.registers[nibble2 as usize] & 0x01;
+                self.registers[nibble2 as usize] /= 2;
+            },
+            (8, _, _, 0xE) => {
+                self.registers[0xF] = self.registers[nibble2 as usize] & 0x80;
+                self.registers[nibble2 as usize] *= 2;
+            },
+            (9, _, _, 0) => {
+                if self.registers[nibble2 as usize] != self.registers[nibble3 as usize] {
+                    self.pc+=2;
+                }
+            },
             (0xA, _, _, _) => self.idx_register = ((nibble2 as u16) << 8) | ((nibble3 as u16) << 4) | (nibble4 as u16),
+            (0xB, _, _, _) => self.pc = u16::from(self.registers[0_usize]) + (((nibble2 as u16) << 8) | ((nibble3 as u16) << 4) | (nibble4 as u16)),
+            (0xC, _, _, _) => {
+                let rand_byte : u8 = rand::random();
+                self.registers[nibble2 as usize] = rand_byte & ((nibble3 << 4) | (nibble4))
+            },
             (0xD, _, _, _) => self.update_framebuffer(nibble2, nibble3, nibble4),
             _ => todo!("Instruction not implemented: {:#04X}", self.current_insn),
         }
     }
-
-
 
     fn update_framebuffer(&mut self, x: u8, y: u8, n: u8) {
         let vx = self.registers[usize::from(x)] as usize; //xcoord
