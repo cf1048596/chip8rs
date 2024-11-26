@@ -28,5 +28,4 @@ fn main() -> Result<(), Box<dyn Error>> {
         cpu.decode_and_exec();
         cpu.draw_framebuffer_console();
     }
-    Ok(())
 }

@@ -4,23 +4,24 @@ const SCREEN_WIDTH: usize = 64;
 const SCREEN_HEIGHT: usize = 32;
 const MEMORY_SIZE: usize = 4096;
 const NUM_REGISTERS: usize = 16;
-const FONT_DATA: [u8; 80] = [ 0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
-0x20, 0x60, 0x20, 0x20, 0x70, // 1
-0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
-0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
-0x90, 0x90, 0xF0, 0x10, 0x10, // 4
-0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
-0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
-0xF0, 0x10, 0x20, 0x40, 0x40, // 7
-0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
-0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
-0xF0, 0x90, 0xF0, 0x90, 0x90, // A
-0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
-0xF0, 0x80, 0x80, 0x80, 0xF0, // C
-0xE0, 0x90, 0x90, 0x90, 0xE0, // D
-0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
-0xF0, 0x80, 0xF0, 0x80, 0x80  // F
-];
+const FONT_DATA: [u8; 80] = 
+    [ 0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+    0x20, 0x60, 0x20, 0x20, 0x70, // 1
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+    0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+    ];
 
 pub struct Cpu {
     memory: [u8; MEMORY_SIZE],
@@ -43,7 +44,7 @@ impl Cpu {
         //our starting address for the program counter is 512/0x200 where our binary is read into
         Self {
             memory,
-            framebuffer: [ [false; SCREEN_WIDTH]; SCREEN_HEIGHT],
+            framebuffer: [[false; SCREEN_WIDTH]; SCREEN_HEIGHT],
             registers: [0; NUM_REGISTERS],
             stack: Vec::new(),
             sp: 0,
@@ -62,65 +63,71 @@ impl Cpu {
     }
 
     pub fn decode_and_exec(&mut self) {
-        let nibble1 = ((self.current_insn &0xF000) >> 12) as u8;
-        let nibble2 = ((self.current_insn &0x0F00) >> 8) as u8;
-        let nibble3 = ((self.current_insn &0x00F0) >> 4) as u8;
-        let nibble4 = (self.current_insn &0x000F) as u8;
+        let nibble1 = ((self.current_insn & 0xF000) >> 12) as u8;
+        let nibble2 = ((self.current_insn & 0x0F00) >> 8) as u8;
+        let nibble3 = ((self.current_insn & 0x00F0) >> 4) as u8;
+        let nibble4 = (self.current_insn & 0x000F) as u8;
+
         match (nibble1, nibble2, nibble3, nibble4) {
-            (0,0, 0b1110, 0) => self.framebuffer = [[false; SCREEN_WIDTH]; SCREEN_HEIGHT], 
-            (0, 0, 0b1110, 0b1110) => todo!(),
-            (1, 0..=15, 0..=15, 0..=15) => self.pc = (nibble2+nibble3+nibble4).into(),
-            (6, 0..=15, _, _) => self.registers[nibble2 as usize] = nibble3+nibble4,
-            (7, 0..=15, _, _) => self.registers[nibble2 as usize] = self.registers[nibble2 as usize].wrapping_add(nibble3 + nibble4),
-            (10, 0..=15, 0..=15, 0..=15) => self.idx_register = (nibble2+nibble3+nibble4).into(),
-            (_d, _, _, _) => self.update_framebuffer(nibble2, nibble3, nibble4),
+            (0, 0, 0xE, 0) => self.framebuffer = [[false; SCREEN_WIDTH]; SCREEN_HEIGHT],
+            (0, 0, 0xE, 0xE) => todo!(),
+            (1, _, _, _) => self.pc = ((nibble2 as u16) << 8) | ((nibble3 as u16) << 4) | (nibble4 as u16),
+            (6, 0..=15, _, _) => self.registers[nibble2 as usize] = (nibble3 << 4) | nibble4,
+            (7, 0..=15, _, _) => {
+                let nn = (nibble3 << 4) | nibble4;
+                self.registers[nibble2 as usize] = self.registers[nibble2 as usize].wrapping_add(nn);
+            }
+            (0xA, _, _, _) => self.idx_register = ((nibble2 as u16) << 8) | ((nibble3 as u16) << 4) | (nibble4 as u16),
+            (0xD, _, _, _) => self.update_framebuffer(nibble2, nibble3, nibble4),
+            _ => todo!("Instruction not implemented: {:#04X}", self.current_insn),
         }
     }
 
+
+
     fn update_framebuffer(&mut self, x: u8, y: u8, n: u8) {
-        // Get the register values for vx and vy from the second and third nibble of the DXYN instruction
-        let vx = self.registers[usize::from(x)] as u32;
-        let vy = self.registers[usize::from(y)] as u32;
+        let vx = self.registers[usize::from(x)] as usize; //xcoord
+        let vy = self.registers[usize::from(y)] as usize; //ycoord
+        let mut vf = 0; //carry flag
 
-        // Iterate over the sprite rows
         for row in 0..n {
-            let bits = self.memory[usize::from(self.idx_register + u16::from(row))];
-            let cy = (vy + row as u32) % SCREEN_HEIGHT as u32; // Y-coordinate, wrapping around if needed
 
-            // Iterate over each column in the sprite (8 bits per row)
-            for col in 0..8 {
-                let cx = (vx + col as u32) % SCREEN_WIDTH as u32; // X-coordinate, wrapping around if needed
-                let mut curr_col = self.framebuffer[cy as usize][cx as usize]; // Get the current pixel value
-                let bit_val = bits & (0x80 >> col); // Check if the current bit is set
+            //iter over each column in sprite
+            let sprite_byte = self.memory[self.idx_register as usize + row as usize];
 
-                if bit_val > 0 {
-                    // If the pixel is already on, set the collision flag
-                    if curr_col {
-                        self.registers[NUM_REGISTERS - 1] = 1; // Set VF (collision flag) to 1
-                    }
-                    // Toggle the pixel
-                    curr_col = !curr_col;
+            for bit in 0..8 { //iter over each bit
+                let pixel_x = (vx + bit) % SCREEN_WIDTH; //wrap horizontally
+                let pixel_y = (vy + row as usize) % SCREEN_HEIGHT; //wrap vertically
+
+                let sprite_pixel = (sprite_byte >> (7 - bit)) & 1; //get pixel either 0 or 1
+
+                //xor the current framebuffer pixel with the sprite pixel
+                let existing_pixel = self.framebuffer[pixel_y][pixel_x];
+                let new_pixel = existing_pixel ^ (sprite_pixel != 0);
+
+                //update framebuffer
+                self.framebuffer[pixel_y][pixel_x] = new_pixel;
+
+                //check for pixel collision (turning off a pixel)
+                if existing_pixel && !new_pixel {
+                    vf = 1; //set carry flag
                 }
-
-                // Update the framebuffer with the new value
-                self.framebuffer[cy as usize][cx as usize] = curr_col;
             }
         }
+        //set vf register to current state of carry flag
+        self.registers[NUM_REGISTERS - 1] = vf;
     }
 
     pub fn draw_framebuffer_console(&self) {
-        // Iterate through each row of the framebuffer
         for row in self.framebuffer.iter() {
-            // Iterate through each pixel in the row
             for &pixel in row.iter() {
-                // Print '#' for on (true) pixels, and a space for off (false) pixels
                 if pixel {
                     print!("#");
                 } else {
                     print!(" ");
                 }
             }
-            println!(); // Move to the next line after each row
+            println!();
         }
     }
 }
