@@ -109,8 +109,7 @@ impl Cpu {
                 self.registers[nibble2 as usize] = self.registers[nibble2 as usize].wrapping_add(nn);
             },
             (8, _, _, 0) => {
-                let vx = self.registers[nibble2 as usize];
-                self.registers[nibble3 as usize] = vx;
+                self.registers[nibble2 as usize] = self.registers[nibble3 as usize];
             },
             (8, _, _, 1) => {
                 self.registers[nibble2 as usize] |= self.registers[nibble3 as usize];
@@ -132,7 +131,7 @@ impl Cpu {
                     (vx, vy) if vy > vx => self.registers[0xF] = 0,
                     _ => print!("vx & vy are equal"),
                 }
-                self.registers[nibble2 as usize] -= self.registers[nibble3 as usize];
+                self.registers[nibble2 as usize] = self.registers[nibble2 as usize].wrapping_sub(self.registers[nibble3 as usize]);
             },
             (8, _, _, 6) => {
                 self.registers[0xF] = self.registers[nibble2 as usize] & 0x01;
@@ -144,12 +143,12 @@ impl Cpu {
                     (vx, vy) if vy > vx => self.registers[0xF] = 1,
                     _ => print!("vx & vy are equal"),
                 }
-                let sum = self.registers[nibble3 as usize] - self.registers[nibble2 as usize];
+                let sum = self.registers[nibble3 as usize].wrapping_sub(self.registers[nibble2 as usize]);
                 self.registers[nibble2 as usize] = sum;
             },
             (8, _, _, 0xE) => {
                 self.registers[0xF] = self.registers[nibble2 as usize] & 0x80;
-                self.registers[nibble2 as usize] *= 2;
+                self.registers[nibble2 as usize] = self.registers[nibble2 as usize].wrapping_mul(2);
             },
             (9, _, _, 0) => {
                 if self.registers[nibble2 as usize] != self.registers[nibble3 as usize] {
@@ -195,12 +194,12 @@ impl Cpu {
                 self.memory[self.idx_register as usize+2] = o;
             }
             (0xF, _, 5, 5) => {
-                for reg in 0..NUM_REGISTERS {
+                for reg in 0..=nibble2 as usize {
                     self.memory[self.idx_register as usize + reg] = self.registers[reg];
                 }
             }
             (0xF, _, 6, 5) => {
-                for reg in 0..NUM_REGISTERS {
+                for reg in 0..=nibble2 as usize {
                     self.registers[reg] = self.memory[self.idx_register as usize + reg];
                }
             },

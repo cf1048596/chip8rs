@@ -76,7 +76,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-
 fn render_framebuffer(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, framebuffer: &[[bool; SCREEN_WIDTH]; SCREEN_HEIGHT]) {
     canvas.set_draw_color(sdl2::pixels::Color::BLACK);
     canvas.clear();
