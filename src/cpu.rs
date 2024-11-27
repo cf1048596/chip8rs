@@ -2,8 +2,8 @@
 
 use std::{fmt::write, usize};
 
-const SCREEN_WIDTH: usize = 64;
-const SCREEN_HEIGHT: usize = 32;
+pub const SCREEN_WIDTH: usize = 64;
+pub const SCREEN_HEIGHT: usize = 32;
 const MEMORY_SIZE: usize = 4096;
 const NUM_REGISTERS: usize = 16;
 const FONT_DATA: [u8; 80] = 
@@ -155,7 +155,7 @@ impl Cpu {
             (0xB, _, _, _) => self.pc = u16::from(self.registers[0_usize]) + (((nibble2 as u16) << 8) | ((nibble3 as u16) << 4) | (nibble4 as u16)),
             (0xC, _, _, _) => {
                 let rand_byte : u8 = rand::random();
-                self.registers[nibble2 as usize] = rand_byte & ((nibble3 << 4) | (nibble4))
+                self.registers[nibble2 as usize] = rand_byte & ((nibble3 << 4) | (nibble4 ))
             },
             (0xD, _, _, _) => self.update_framebuffer(nibble2, nibble3, nibble4),
             _ => todo!("Instruction not implemented: {:#04X}", self.current_insn),
@@ -206,6 +206,9 @@ impl Cpu {
             }
             println!();
         }
+    }
+    pub fn get_framebuffer(&self) -> &[[bool; SCREEN_WIDTH]; SCREEN_HEIGHT] {
+        &self.framebuffer
     }
 }
 
