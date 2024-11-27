@@ -6,6 +6,7 @@ pub const SCREEN_WIDTH: usize = 64;
 pub const SCREEN_HEIGHT: usize = 32;
 const MEMORY_SIZE: usize = 4096;
 const NUM_REGISTERS: usize = 16;
+const NUM_KEYS: usize = 16;
 const FONT_DATA: [u8; 80] = 
     [ 0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
     0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -27,11 +28,14 @@ const FONT_DATA: [u8; 80] =
 
 pub struct Cpu {
     memory: [u8; MEMORY_SIZE],
+    keys: [bool; NUM_KEYS],
     framebuffer: [ [bool; SCREEN_WIDTH]; SCREEN_HEIGHT],
-    stack: Vec<u8>,
+    stack: [u16; MEMORY_SIZE],
     sp: u16,
     pc: u16,
     idx_register: u16,
+    dt_register: u8,
+    st_register: u8,
     registers: [u8; NUM_REGISTERS],
     current_insn: u16,
 }
@@ -46,18 +50,17 @@ impl Cpu {
         //our starting address for the program counter is 512/0x200 where our binary is read into
         Self {
             memory,
+            keys: [false; NUM_KEYS],
             framebuffer: [[false; SCREEN_WIDTH]; SCREEN_HEIGHT],
             registers: [0; NUM_REGISTERS],
-            stack: Vec::new(),
+            stack: [0; MEMORY_SIZE], 
             sp: 0,
             pc: 0x200,
+            dt_register: 0,
+            st_register: 0,
             idx_register: 0,
             current_insn: 0,
         }
-    }
-
-    fn push(&mut self, val: u8) {
-        self.stack.push(val);
     }
 
     pub fn fetch(&mut self) {
@@ -77,15 +80,13 @@ impl Cpu {
         match (nibble1, nibble2, nibble3, nibble4) {
             (0, 0, 0xE, 0) => self.framebuffer = [[false; SCREEN_WIDTH]; SCREEN_HEIGHT],
             (0, 0, 0xE, 0xE) => {
-                self.pc = self.stack[usize::from(self.sp)].into();
-                self.stack.pop();
+                self.pc = self.stack[usize::from(self.sp)];
             },
             (1, _, _, _) => self.pc = ((nibble2 as u16) << 8) | ((nibble3 as u16) << 4) | (nibble4 as u16),
             (2, _, _, _) => {
                 self.sp+=1;
-                let address = ((nibble2 as u16) << 8) | ((nibble3 as u16) << 4) | (nibble4 as u16);
-                    self.stack.push(self.sp.try_into().unwrap());
-                self.pc = address;
+                self.stack[self.sp as usize] = self.pc;
+                self.pc = ((nibble2 as u16) << 8) | ((nibble3 as u16) << 4) | (nibble4 as u16);
             },
             (3, _, _, _) => {
                 if self.registers[nibble2 as usize] == (((nibble3 as u16) << 4) | (nibble4 as u16)) as u8 {
@@ -134,13 +135,17 @@ impl Cpu {
                 self.registers[nibble2 as usize] -= self.registers[nibble3 as usize];
             },
             (8, _, _, 6) => {
-                let sum = self.registers[nibble2 as usize] as u16 + self.registers[nibble3 as usize] as u16;
-                self.registers[0xF] = if sum > 0xFF { 1 } else { 0 }; // set vf (carry flag)
-                self.registers[nibble2 as usize] = (sum & 0xFF) as u8; // store lower 8 bits in vx
-            }
-            (8, _, _, 7) => {
                 self.registers[0xF] = self.registers[nibble2 as usize] & 0x01;
                 self.registers[nibble2 as usize] /= 2;
+            }
+            (8, _, _, 7) => {
+                match (self.registers[nibble2 as usize], self.registers[nibble3 as usize]) {
+                    (vx, vy) if vx > vy => self.registers[0xF] = 0,
+                    (vx, vy) if vy > vx => self.registers[0xF] = 1,
+                    _ => print!("vx & vy are equal"),
+                }
+                let sum = self.registers[nibble3 as usize] - self.registers[nibble2 as usize];
+                self.registers[nibble2 as usize] = sum;
             },
             (8, _, _, 0xE) => {
                 self.registers[0xF] = self.registers[nibble2 as usize] & 0x80;
@@ -158,6 +163,47 @@ impl Cpu {
                 self.registers[nibble2 as usize] = rand_byte & ((nibble3 << 4) | (nibble4 ))
             },
             (0xD, _, _, _) => self.update_framebuffer(nibble2, nibble3, nibble4),
+            (0xE, _, 9, 0xE) => {
+                if self.keys[self.registers[nibble2 as usize] as usize] {
+                    self.pc+=2;
+                }
+            },
+            (0xE, _, 0xA, 1) => {
+                if !self.keys[self.registers[nibble2 as usize] as usize] {
+                    self.pc+=2;
+                }
+            },
+            (0xF, _, 0, 7) => self.registers[nibble2 as usize] = self.dt_register,
+            (0xF, _, 0, 0xA) => {
+               if let Some(index) = self.keys.iter().position(|&key| key) {
+                   self.registers[nibble2 as usize] = index as u8;
+               } else {
+                   self.pc-=2;
+               }
+            },
+            (0xF, _, 1, 5) => self.dt_register = self.registers[nibble2 as usize],
+            (0xF, _, 1, 8) => self.st_register = self.registers[nibble2 as usize],
+            (0xF, _, 1, 0xE) => self.idx_register += u16::from(self.registers[nibble2 as usize]),
+            (0xF, _, 2, 9) => self.idx_register = u16::from(self.registers[nibble2 as usize])*0x05_u16,
+            (0xF, _, 3, 3) => {
+                let vx = self.registers[nibble2 as usize];
+                let h: u8 = vx/100;
+                let t: u8 = (vx % 100) / 10;
+                let o: u8 = vx % 10;
+                self.memory[self.idx_register as usize] = h;
+                self.memory[self.idx_register as usize+1] = t;
+                self.memory[self.idx_register as usize+2] = o;
+            }
+            (0xF, _, 5, 5) => {
+                for reg in 0..NUM_REGISTERS {
+                    self.memory[self.idx_register as usize + reg] = self.registers[reg];
+                }
+            }
+            (0xF, _, 6, 5) => {
+                for reg in 0..NUM_REGISTERS {
+                    self.registers[reg] = self.memory[self.idx_register as usize + reg];
+               }
+            },
             _ => todo!("Instruction not implemented: {:#04X}", self.current_insn),
         }
     }
@@ -211,4 +257,3 @@ impl Cpu {
         &self.framebuffer
     }
 }
-
