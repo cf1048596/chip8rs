@@ -129,7 +129,7 @@ impl Cpu {
                 match (self.registers[nibble2 as usize], self.registers[nibble3 as usize]) {
                     (vx, vy) if vx > vy => self.registers[0xF] = 1,
                     (vx, vy) if vy > vx => self.registers[0xF] = 0,
-                    _ => print!("vx & vy are equal"),
+                    _ => {}, 
                 }
                 self.registers[nibble2 as usize] = self.registers[nibble2 as usize].wrapping_sub(self.registers[nibble3 as usize]);
             },
@@ -141,7 +141,7 @@ impl Cpu {
                 match (self.registers[nibble2 as usize], self.registers[nibble3 as usize]) {
                     (vx, vy) if vx > vy => self.registers[0xF] = 0,
                     (vx, vy) if vy > vx => self.registers[0xF] = 1,
-                    _ => print!("vx & vy are equal"),
+                    _ => {},
                 }
                 let sum = self.registers[nibble3 as usize].wrapping_sub(self.registers[nibble2 as usize]);
                 self.registers[nibble2 as usize] = sum;
