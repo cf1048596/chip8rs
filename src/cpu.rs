@@ -28,14 +28,14 @@ const FONT_DATA: [u8; 80] =
 
 pub struct Cpu {
     memory: [u8; MEMORY_SIZE],
-    keys: [bool; NUM_KEYS],
+    pub keys: [bool; NUM_KEYS],
     framebuffer: [ [bool; SCREEN_WIDTH]; SCREEN_HEIGHT],
     stack: [u16; MEMORY_SIZE],
     sp: u16,
     pc: u16,
     idx_register: u16,
-    dt_register: u8,
-    st_register: u8,
+    pub dt_register: u8,
+    pub st_register: u8,
     registers: [u8; NUM_REGISTERS],
     current_insn: u16,
 }
@@ -159,7 +159,7 @@ impl Cpu {
             (0xB, _, _, _) => self.pc = u16::from(self.registers[0_usize]) + (((nibble2 as u16) << 8) | ((nibble3 as u16) << 4) | (nibble4 as u16)),
             (0xC, _, _, _) => {
                 let rand_byte : u8 = rand::random();
-                self.registers[nibble2 as usize] = rand_byte & ((nibble3 << 4) | (nibble4 ))
+                self.registers[nibble2 as usize] = rand_byte & ((nibble3 << 4) | (nibble4))
             },
             (0xD, _, _, _) => self.update_framebuffer(nibble2, nibble3, nibble4),
             (0xE, _, 9, 0xE) => {
