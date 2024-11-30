@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::{fmt::write, usize};
+use getrandom::*;
 
 pub const SCREEN_WIDTH: usize = 64;
 pub const SCREEN_HEIGHT: usize = 32;
@@ -158,7 +159,9 @@ impl Cpu {
             (0xA, _, _, _) => self.idx_register = ((nibble2 as u16) << 8) | ((nibble3 as u16) << 4) | (nibble4 as u16),
             (0xB, _, _, _) => self.pc = u16::from(self.registers[0_usize]) + (((nibble2 as u16) << 8) | ((nibble3 as u16) << 4) | (nibble4 as u16)),
             (0xC, _, _, _) => {
-                let rand_byte : u8 = rand::random();
+                let mut buf = [0u8; 1]; // Create a buffer to hold one byte
+                getrandom(&mut buf).unwrap();
+                let rand_byte : u8 = buf[0];
                 self.registers[nibble2 as usize] = rand_byte & ((nibble3 << 4) | (nibble4))
             },
             (0xD, _, _, _) => self.update_framebuffer(nibble2, nibble3, nibble4),
@@ -222,7 +225,6 @@ impl Cpu {
                 let pixel_y = (vy + row as usize) % SCREEN_HEIGHT; //wrap vertically
 
                 let sprite_pixel = (sprite_byte >> (7 - bit)) & 1; //get pixel either 0 or 1
-
                 //xor the current framebuffer pixel with the sprite pixel
                 let existing_pixel = self.framebuffer[pixel_y][pixel_x];
                 let new_pixel = existing_pixel ^ (sprite_pixel != 0);
