@@ -159,7 +159,7 @@ impl Cpu {
             (0xA, _, _, _) => self.idx_register = ((nibble2 as u16) << 8) | ((nibble3 as u16) << 4) | (nibble4 as u16),
             (0xB, _, _, _) => self.pc = u16::from(self.registers[0_usize]) + (((nibble2 as u16) << 8) | ((nibble3 as u16) << 4) | (nibble4 as u16)),
             (0xC, _, _, _) => {
-                let mut buf = [0u8; 1]; // Create a buffer to hold one byte
+                let mut buf = [0u8; 1]; //create buffer to hold one byte
                 getrandom(&mut buf).unwrap();
                 let rand_byte : u8 = buf[0];
                 self.registers[nibble2 as usize] = rand_byte & ((nibble3 << 4) | (nibble4))
@@ -254,6 +254,7 @@ impl Cpu {
             println!();
         }
     }
+
     pub fn get_framebuffer(&self) -> &[[bool; SCREEN_WIDTH]; SCREEN_HEIGHT] {
         &self.framebuffer
     }

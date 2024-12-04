@@ -1,7 +1,6 @@
 mod cpu; 
 use cpu::Cpu;
 use std::error::Error;
-use std::fmt::write;
 use crate::cpu::SCREEN_WIDTH;
 use crate::cpu::SCREEN_HEIGHT;
 use macroquad::prelude::*;
@@ -9,7 +8,7 @@ use std::fs::File;
 use std::io::Read;
 
 const PIXEL_SCALE : u32 = 10;
-const CYCLES_PER_FRAME: u32 = 10;
+const CYCLES_PER_FRAME: u32 = 5;
 
 #[macroquad::main("chip8rs")]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -27,7 +26,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             cpu.decode_and_exec();
         }
 
-        // Decrease timers
+        //decrease timers
         if cpu.dt_register > 0 {
             cpu.dt_register -= 1;
         }
@@ -35,34 +34,41 @@ async fn main() -> Result<(), Box<dyn Error>> {
             cpu.st_register -= 1;
         }
 
-        // Render the framebuffer
+        //render framebuffer
         render_framebuffer(cpu.get_framebuffer());
 
-        // Cap the frame rate (60 FPS)
+        //cap fps (60 FPS)
         next_frame().await;
     }
     Ok(())
 }
 
-
 fn render_framebuffer(framebuffer: &[[bool; SCREEN_WIDTH]; SCREEN_HEIGHT]) {
-    clear_background(BLACK); // set the background to black
+    //clear screen to black
+    clear_background(BLACK);
+
+    //get current screen width & height
+    let window_width = screen_width();
+    let window_height = screen_height();
+
+    //calculate the scaling factors to fit the framebuffer to the screen
+    let pixel_width = window_width / SCREEN_WIDTH as f32;
+    let pixel_height = window_height / SCREEN_HEIGHT as f32;
 
     for (y, row) in framebuffer.iter().enumerate() {
         for (x, &pixel) in row.iter().enumerate() {
             if pixel {
-                let x_pos = (x as u32 * PIXEL_SCALE) as f32;
-                let y_pos = (y as u32 * PIXEL_SCALE) as f32;
+                let x_pos = x as f32 * pixel_width;
+                let y_pos = y as f32 * pixel_height;
 
-                // draw a rectangle for each "on" pixel
-                draw_rectangle(x_pos, y_pos, PIXEL_SCALE as f32, PIXEL_SCALE as f32, WHITE);
+                //draw a rectangle for each "on" pixel
+                draw_rectangle(x_pos, y_pos, pixel_width, pixel_height, WHITE);
             }
         }
     }
 }
 
-
-// Handle input and update the keys array
+//handle input and update the keys array
 fn handle_input() -> [bool; 16] {
 
     let mut keys_state = [false; 16];
@@ -86,7 +92,7 @@ fn handle_input() -> [bool; 16] {
                 KeyCode::X => keys_state[0x0] = false,
                 KeyCode::C => keys_state[0xB] = false,
                 KeyCode::V => keys_state[0xF] = false,
-                _ => println!("no one cares"),
+                _ => {},
                 }
             });
 
@@ -110,7 +116,7 @@ fn handle_input() -> [bool; 16] {
                 KeyCode::X => keys_state[0x0] = true,
                 KeyCode::C => keys_state[0xB] = true,
                 KeyCode::V => keys_state[0xF] = true,
-                _ => println!("no one cares"),
+                _ => {},
                 }
             });
         keys_state
