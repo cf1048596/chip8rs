@@ -6,7 +6,6 @@ use std::fs::File;
 use std::io::Read;
 use crate::cpu::SCREEN_WIDTH;
 use crate::cpu::SCREEN_HEIGHT;
-
 extern crate sdl2;
 
 const PIXEL_SCALE : u32 = 10;
