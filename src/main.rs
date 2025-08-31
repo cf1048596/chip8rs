@@ -1,16 +1,15 @@
-mod cpu; 
-use cpu::Cpu;
+mod cpu;
+use crate::cpu::SCREEN_HEIGHT;
+use crate::cpu::SCREEN_WIDTH;
 use clap::Parser;
+use cpu::Cpu;
 use std::error::Error;
 use std::fs::File;
 use std::io::Read;
-use crate::cpu::SCREEN_WIDTH;
-use crate::cpu::SCREEN_HEIGHT;
 extern crate sdl2;
 
-const PIXEL_SCALE : u32 = 10;
+const PIXEL_SCALE: u32 = 10;
 const CYCLES_PER_FRAME: u32 = 10;
-
 
 #[derive(Parser)]
 #[command(name = "chip8-rs")]
@@ -18,8 +17,9 @@ const CYCLES_PER_FRAME: u32 = 10;
 #[command(about = "A chip8 emulator written in rust", long_about = None)]
 struct Cli {
     #[arg(long, short)]
-    file : String,
+    file: String,
 }
+
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
     println!("File name: {}", cli.file);
@@ -66,7 +66,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         cpu.keys[key] = false;
                     }
                 }
-                _ => {}
+                _ => (),
             }
         }
 
@@ -95,15 +95,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn render_framebuffer(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, framebuffer: &[[bool; SCREEN_WIDTH]; SCREEN_HEIGHT]) {
-
+fn render_framebuffer(
+    canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
+    framebuffer: &[[bool; SCREEN_WIDTH]; SCREEN_HEIGHT],
+) {
     //set allat to black
     canvas.set_draw_color(sdl2::pixels::Color::BLACK);
     canvas.clear();
 
     canvas.set_draw_color(sdl2::pixels::Color::WHITE);
-    for (y, row) in framebuffer.iter().enumerate() {
-        for (x, &pixel) in row.iter().enumerate() {
+
+    framebuffer.iter().enumerate().for_each(|(y, row)| {
+        row.iter().enumerate().for_each(|(x, &pixel)| {
             if pixel {
                 let rect = sdl2::rect::Rect::new(
                     (x as u32 * PIXEL_SCALE) as i32,
@@ -113,8 +116,8 @@ fn render_framebuffer(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, fr
                 );
                 canvas.fill_rect(rect).unwrap();
             }
-        }
-    }
+        });
+    });
     canvas.present();
 }
 
@@ -139,5 +142,3 @@ fn keycode_to_chip8_key(keycode: Option<sdl2::keyboard::Keycode>) -> Option<usiz
         _ => None,
     }
 }
-
-
