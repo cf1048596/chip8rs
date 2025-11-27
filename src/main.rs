@@ -1,8 +1,9 @@
 mod cpu;
-use crate::cpu::SCREEN_HEIGHT;
-use crate::cpu::SCREEN_WIDTH;
 use clap::Parser;
 use cpu::Cpu;
+use cpu::SCREEN_HEIGHT;
+use cpu::SCREEN_WIDTH;
+use sdl2::render::RenderTarget;
 use std::error::Error;
 use std::fs::File;
 use std::io::Read;
@@ -24,7 +25,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
     println!("File name: {}", cli.file);
 
-    let mut file_contents: Vec<u8> = Vec::new();
+    let mut file_contents: Vec<u8> = vec![];
     File::open(&cli.file)?.read_to_end(&mut file_contents)?;
     println!("Opened and read from file {} OK", cli.file);
     println!("File size: {}", file_contents.len());
@@ -95,8 +96,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn render_framebuffer(
-    canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
+fn render_framebuffer<W: RenderTarget>(
+    canvas: &mut sdl2::render::Canvas<W>,
     framebuffer: &[[bool; SCREEN_WIDTH]; SCREEN_HEIGHT],
 ) {
     //set allat to black
