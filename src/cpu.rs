@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 
 pub const SCREEN_WIDTH: usize = 64;
 pub const SCREEN_HEIGHT: usize = 32;
@@ -80,7 +79,7 @@ impl Cpu {
         match (nibble1, nibble2, nibble3, nibble4) {
             (0, 0, 0xE, 0) => self.framebuffer = [[false; SCREEN_WIDTH]; SCREEN_HEIGHT],
             (0, 0, 0xE, 0xE) => {
-                self.pc = self.stack[usize::from(self.sp)];
+                self.pc = self.stack[self.sp as usize];
             }
             (1, _, _, _) => {
                 self.pc = ((nibble2 as u16) << 8) | ((nibble3 as u16) << 4) | (nibble4 as u16)
@@ -176,7 +175,7 @@ impl Cpu {
                     ((nibble2 as u16) << 8) | ((nibble3 as u16) << 4) | (nibble4 as u16)
             }
             (0xB, _, _, _) => {
-                self.pc = u16::from(self.registers[0_usize])
+                self.pc = self.registers[0_usize] as u16
                     + (((nibble2 as u16) << 8) | ((nibble3 as u16) << 4) | (nibble4 as u16))
             }
             (0xC, _, _, _) => {
@@ -232,18 +231,18 @@ impl Cpu {
     }
 
     fn update_framebuffer(&mut self, x: u8, y: u8, n: u8) {
-        let vx = self.registers[usize::from(x)] as usize; //xcoord
-        let vy = self.registers[usize::from(y)] as usize; //ycoord
+        let vx = self.registers[x as usize] as usize; //xcoord
+        let vy = self.registers[y as usize] as usize; //ycoord
         let mut vf = 0; //carry flag
 
-        for row in 0..n {
+        for row in 0..n as usize {
             //iter over each column in sprite
-            let sprite_byte = self.memory[self.idx_register as usize + row as usize];
+            let sprite_byte = self.memory[self.idx_register as usize + row];
 
             for bit in 0..8 {
                 //iter over each bit
                 let pixel_x = (vx + bit) % SCREEN_WIDTH; //wrap horizontally
-                let pixel_y = (vy + row as usize) % SCREEN_HEIGHT; //wrap vertically
+                let pixel_y = (vy + row) % SCREEN_HEIGHT; //wrap vertically
 
                 let sprite_pixel = (sprite_byte >> (7 - bit)) & 1; //get pixel either 0 or 1
 
@@ -264,6 +263,7 @@ impl Cpu {
         self.registers[NUM_REGISTERS - 1] = vf;
     }
 
+    #[allow(dead_code)]
     pub fn draw_framebuffer_console(&self) {
         self.framebuffer.iter().for_each(|row| {
             row.iter().for_each(|pixel| match pixel {
